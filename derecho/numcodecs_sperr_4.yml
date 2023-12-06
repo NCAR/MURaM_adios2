@@ -1,0 +1,11 @@
+name: scratch_numcodecs_sperr_5
+dependencies:
+  - python=3.9
+  - numpy   
+  - ipykernel
+  - zarr
+  - pip
+  - pip:
+    - dask-mpi
+    - dask
+    - distributed

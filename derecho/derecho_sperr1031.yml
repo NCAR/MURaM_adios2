@@ -1,0 +1,13 @@
+name: derecho_sperr1031
+dependencies:
+  - python=3.9
+  - numpy
+  - ipykernel
+  - virtualenv
+  - xarray
+  - zarr
+  - pip
+  - pip:
+    - dask-mpi
+    - dask
+    - distributed

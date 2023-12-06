@@ -1,0 +1,42 @@
+==============================================
+How to compile adios2 and adios2 enabled MURaM
+==============================================
+
+
+Update Make_defs with adios2 enabled Make_defs:
+    cp derecho/Make_defs .
+
+Create conda environment "derecho_sperr1031" with mpi4py and numcodecs/sperr:
+    cp derecho/install_sperr.sh . 
+    cp derecho/derecho_sperr1031.yml .
+    cp derecho/*whl .
+    source install_sperr.sh
+    ignore the error message if you see "Successfully installed" in the bottom:
+        "ERROR: pip's dependency resolver does not currently
+        take into account all the packages that are installed. This behaviour is
+        the source of the following dependency conflicts.
+        zarr 2.16.1 requires numcodecs>=0.10.0, but you have numcodecs
+        0.1.dev690+dirty which is incompatible.
+        Successfully installed entrypoints-0.4 numcodecs-0.1.dev690+dirty
+        numpy-1.26.1" 
+    which python
+
+Download adios2, build and install it:
+    cp derecho/install_adios2.sh . 
+    set PYTHON_EXECUTABLE to the one that got from `which python` above
+    source install_adios2.sh
+
+Compile MURaM with adios2:
+    cp derecho/build.derecho_adios2.sh . 
+    update ADIOS2_DIR to your ADIOS2_DIR
+    source build.derecho_adios2.sh
+
+Run the job:
+    copy derecho/*py to your test directory 
+    copy job.derecho_adios2.sh to your test directory 
+    In job.derecho_adios2.sh, update ADIOS2_DIR to your ADIOS2_DIR 
+    change the conda environment in job.derecho_adios2.sh to "derecho_sperr1031" 
+    submit job: qsub job.derecho_adios2.sh
+
+
+
