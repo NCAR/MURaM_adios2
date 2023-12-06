@@ -670,14 +670,24 @@ for i in range(nsteps):
             bpFileReader.Get(var_get27, inVar27,adios2.Mode.Sync)
             bpFileReader.Get(var_get28, inVar28,adios2.Mode.Sync)
         bpFileReader.EndStep()
-        '''
+        if ycol_rank == 0:
+            if multifile:
+                prim2_corona.corona_y1[start2[0][0]:end2[0][0],start2[0][1]:end2[0][1],start2[0][2]:end2[0][2]]=inVar21
+                prim2_corona.corona_y2[start2[0][0]:end2[0][0],start2[0][1]:end2[0][1],start2[0][2]:end2[0][2]]=inVar22
+                prim2_corona.corona_y3[start2[0][0]:end2[0][0],start2[0][1]:end2[0][1],start2[0][2]:end2[0][2]]=inVar23
+                prim2_corona.corona_y4[start2[0][0]:end2[0][0],start2[0][1]:end2[0][1],start2[0][2]:end2[0][2]]=inVar24
+        if xcol_rank == 0:
+            if multifile:
+                prim2_corona.corona_x1[start2[1][0]:end2[1][0],start2[1][1]:end2[1][1],start2[1][2]:end2[1][2]]=inVar17
+                prim2_corona.corona_x2[start2[1][0]:end2[1][0],start2[1][1]:end2[1][1],start2[1][2]:end2[1][2]]=inVar18
+                prim2_corona.corona_x3[start2[1][0]:end2[1][0],start2[1][1]:end2[1][1],start2[1][2]:end2[1][2]]=inVar19
+                prim2_corona.corona_x4[start2[1][0]:end2[1][0],start2[1][1]:end2[1][1],start2[1][2]:end2[1][2]]=inVar20
         if zcol_rank == 0:
             if multifile:
                 prim2_corona.corona_z1[start2[2][0]:end2[2][0],start2[2][1]:end2[2][1],start2[2][2]:end2[2][2]]=inVar25
                 prim2_corona.corona_z2[start2[2][0]:end2[2][0],start2[2][1]:end2[2][1],start2[2][2]:end2[2][2]]=inVar26
                 prim2_corona.corona_z3[start2[2][0]:end2[2][0],start2[2][1]:end2[2][1],start2[2][2]:end2[2][2]]=inVar27
                 prim2_corona.corona_z4[start2[2][0]:end2[2][0],start2[2][1]:end2[2][1],start2[2][2]:end2[2][2]]=inVar28
-        '''
 
     worker_comm.Barrier()
     if multifile:
@@ -685,13 +695,13 @@ for i in range(nsteps):
         #print("prim_0 write to file")
         prim2.prim_0[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar
         prim2.prim_1[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar1
-    prim2.prim_2[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar2
-    prim2.prim_3[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar3
-    prim2.prim_4[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar4
-    prim2.prim_5[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar5
-    prim2.prim_6[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar6
-    prim2.prim_7[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar7
-    prim2.prim_8[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar8
+        prim2.prim_2[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar2
+        prim2.prim_3[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar3
+        prim2.prim_4[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar4
+        prim2.prim_5[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar5
+        prim2.prim_6[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar6
+        prim2.prim_7[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar7
+        prim2.prim_8[start[0]:end[0],start[1]:end[1],start[2]:end[2]]=inVar8
     for vi,vn in enumerate(eos_output):
         prim2[vn][start[0]:end[0],start[1]:end[1],start[2]:end[2]]=eosVar[vi]
     for vi,vn in enumerate(diag_output):
