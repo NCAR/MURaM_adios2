@@ -16,10 +16,11 @@ using std::endl;
 int N_eps,N_lr,N_lp3,N_s3;
 #pragma acc declare create(N_eps, N_lr, N_lp3, N_s3)
 double del_eps,del_lr,del_lp3,del_s3;
+#pragma acc declare create(del_eps,del_lr,del_lp3,del_s3)
 double inv_del_eps,inv_del_lr,inv_del_lp3,inv_del_s3;
-#pragma acc declare create(inv_del_eps, inv_del_lr)
+#pragma acc declare create(inv_del_eps, inv_del_lr, inv_del_lp3, inv_del_s3)
 double eps_off, ss_off;
-#pragma acc declare create(ss_off, eps_off, inv_del_lp3, inv_del_s3)
+#pragma acc declare create(ss_off, eps_off)
 
 double *xeps;
 #pragma acc declare create(xeps)
@@ -28,11 +29,15 @@ double *xlr;
 eos_real **p_eostab;
 #pragma acc declare create(p_eostab)
 eos_real **T_eostab;
+#pragma acc declare create(T_eostab)
 eos_real **s_eostab;
 #pragma acc declare create(s_eostab)
 eos_real **ne_eostab; 
+#pragma acc declare create(ne_eostab)
 eos_real **rhoi_eostab;
+#pragma acc declare create(rhoi_eostab)
 eos_real **amb_eostab;
+#pragma acc declare create(amb_eostab)
 
 double *xlp3;
 #pragma acc declare create(xlp3)

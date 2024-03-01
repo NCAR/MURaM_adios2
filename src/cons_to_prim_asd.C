@@ -75,17 +75,15 @@ void ConsToPrim(GridData& Grid, const PhysicsData& Physics, const RunData& Run) 
   ibeg = Grid.lbeg[0]-Grid.ghosts[0];
   iend = Grid.lend[0]+Grid.ghosts[0];
 
-#pragma acc enter data copyin(Grid[:1], U[:bufsize], Grid.pres[:bufsize],           \
+//cout << "Before loop" << endl;
+#pragma acc parallel loop collapse(2) gang                     \
+ present(Grid[:1], U[:bufsize], Grid.pres[:bufsize],           \
   Grid.temp[:bufsize], Grid.ne[:bufsize],                      \
   Grid.rhoi[:bufsize], Grid.amb[:bufsize],                     \
   xeps[:N_eps], xlr[:N_lr], p_eostab[:N_eps][:N_lr],           \
   T_eostab[:N_eps][:N_lr], s_eostab[:N_eps][:N_lr],            \
   ne_eostab[:N_eps][:N_lr], rhoi_eostab[:N_eps][:N_lr],        \
-  amb_eostab[:N_eps][:N_lr])
-
-//cout << "Before loop" << endl;
-#pragma acc parallel loop collapse(2) gang                     \
- default(present)                                   \
+  amb_eostab[:N_eps][:N_lr])                                   \
  private(var[:5][:sz],         \
    eps[:sz],                           \
   lgr[:sz], pres[:sz], temp[:sz], nel[:sz],                    \
@@ -176,7 +174,7 @@ void ConsToPrim(GridData& Grid, const PhysicsData& Physics, const RunData& Run) 
         amb[i] = exp(aa);
       }
       
-#pragma acc loop vector 
+#pragma acc loop vector private(xx) 
       for(i=0;i<sz;i++){
     
       // Out of upper table bounds
