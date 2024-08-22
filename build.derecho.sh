@@ -10,8 +10,8 @@
 #PBS -o build.out 
 
 module purge
-module load ncarenv
-module load nvhpc
+module load ncarenv/23.06
+module load nvhpc/23.1
 module load cuda
 module load craype
 module load cray-mpich
@@ -24,7 +24,7 @@ module list
 #export PATH=/glade/work/haiyingx/ADIOS2_derecho/install_newrc/bin:$PATH
 #export LD_LIBRARY_PATH=/glade/work/haiyingx/ADIOS2_derecho/install_newrc/lib64:$LD_LIBRARY_PATH
 
-export ADIOS2_DIR=/glade/derecho/scratch/haiyingx/ADIOS2_derecho/install
+export ADIOS2_DIR=/glade/derecho/scratch/haiyingx/ADIOS2_derecho/install2
 export PATH=$ADIOS2_DIR/bin:$PATH
 export LD_LIBRARY_PATH=$ADIOS2_DIR/lib64:$LD_LIBRARY_PATH
 
