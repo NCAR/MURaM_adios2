@@ -13,6 +13,7 @@
 #include "ACCH.h"
 
 extern void ELTE_init();
+extern void get_slice_ranks(const RunData&  Run, const GridData& Grid, const PhysicsData& Physics);
 
 using namespace std;
 
@@ -235,6 +236,7 @@ int Initialize(RunData& Run,GridData& Grid,
   Physics.Init();
   Grid.Init(Run,Physics);
   comm_split_init(Run,Grid);
+  get_slice_ranks(Run,Grid,Physics);
 
   if( rank==0 ) {
     if( HasBackupFile(Run.backfile) )

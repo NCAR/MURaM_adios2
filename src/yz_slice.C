@@ -9,11 +9,14 @@
 #include "comm_split.H"
 #include "rt/rt.h"
 #include <iostream>
+#include <unordered_map>
+#include <string>
 
 using std::cout;
 using std::endl;
 
-static adios2_variable *varList_yz[11];
+
+static adios2_variable *varList_yz[1];
 extern void slice_write(const GridData&,const int,float*,int,int,const int,
             const int,FILE*);
 
@@ -95,69 +98,96 @@ void yz_slice(const RunData&  Run, const GridData& Grid,
        
       if (Physics.yz_var[0] == 1){
         iobuf[ind] = (float) Grid.U[node].d;
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) Grid.U[node].d;
         ind += localsize;
       }
       if (Physics.yz_var[1] == 1){
         iobuf[ind] = (float) Grid.U[node].M.x;
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) Grid.U[node].M.x;
         ind += localsize;
       }
       if (Physics.yz_var[2] == 1){
         iobuf[ind] = (float) Grid.U[node].M.y; 
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) Grid.U[node].M.y;
         ind += localsize;
       }
       if (Physics.yz_var[3] == 1){
         iobuf[ind] = (float) Grid.U[node].M.z;
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) Grid.U[node].M.z;
         ind += localsize;
       }
       if (Physics.yz_var[4] == 1){
         iobuf[ind] = (float) (Grid.U[node].e/Grid.U[node].d);
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) (Grid.U[node].e/Grid.U[node].d);
         ind += localsize;
       }
       if (Physics.yz_var[5] == 1){
         iobuf[ind] = (float) Grid.U[node].B.x;
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) Grid.U[node].B.x;
         ind += localsize;
       }
       if (Physics.yz_var[6] == 1){
         iobuf[ind] = (float) Grid.U[node].B.y;  
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) Grid.U[node].B.y;
         ind += localsize;
       }
       if (Physics.yz_var[7] == 1){
         iobuf[ind] = (float) Grid.U[node].B.z;
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) Grid.U[node].B.z;
         ind += localsize;
       }
       if (Physics.yz_var[8] == 1){
         iobuf[ind] = (float) sqrt(Grid.U[node].M.sqr());
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) sqrt(Grid.U[node].M.sqr());
         ind += localsize;
       }
       if (Physics.yz_var[9] == 1){
         iobuf[ind] = (float) sqrt(Grid.U[node].B.sqr());
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) sqrt(Grid.U[node].B.sqr());
         ind += localsize;
       }
       if (Physics.yz_var[10] == 1){
         iobuf[ind] = (float) Grid.temp[node];
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) Grid.temp[node];
         ind += localsize;
       }
       if (Physics.yz_var[11] == 1){
         iobuf[ind] = (float) Grid.pres[node];
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) Grid.pres[node];
         ind += localsize;
       }
       if (Physics.yz_var[12] == 1){
         iobuf[ind] = (float) rts->Iout(j,k);
+        if (Run.enable_adios2)
+          iobuf_list[nsl][ind]=(float) rts->Iout(j,k); 
       }
-      if (Run.enable_adios2)
-         iobuf_list[nsl]=iobuf;
       }
       
 
+      cout<<Run.rank<<" yz slice name "<<ixpos[nsl]<<endl;
       char adios2_var_name[128]; 
       int curr=0;
-      if(Physics.slice[i_sl_collect] == 0) {
         if(Run.enable_adios2){
-          if (Run.globiter < std::min(Run.resfreq,Run.slicefreq) || (Run.globiter >= Run.begin_iter && varList_yz[0]==NULL) ){
+          //if (Run.globiter < std::min(Run.resfreq,Run.slicefreq) || (Run.globiter >= Run.begin_iter && (varList_yz[0]==NULL || nsl<nslice)) ){
+          if (Run.globiter == Run.begin_iter){
             sprintf(adios2_var_name,"%s_%04d.%06d","yz_slice",
                   ixpos[nsl],curr);
+          
+            cout<<"rank ="<<Run.rank<<" "<<adios2_var_name<<endl;
             if(yz_rank == 0)  
-               cout<<"nsl ="<<nsl<<" "<<ixpos[nsl]<<endl;
+               cout<<Run.rank<<" nsl ="<<nsl<<" "<<ixpos[nsl]<<" "<<iobuf[0]<<" "<<iobuf_list[nsl][0]<<endl; 
             uint64_t gdim[3],start[3],count[3];
             gdim[0]=nslvar;
             start[0]=0;
@@ -172,25 +202,27 @@ void yz_slice(const RunData&  Run, const GridData& Grid,
             //cout<<Run.rank<<" yz slice name "<<adios2_var_name<<" "<<localsize<<" "<<start[0]<<" "<<start[1]<<" "<<start[2]<<" "<<count[0]<<" "<<count[1]<<" "<<count[2]<<endl;
 
             if(Run.enable_adios2_double) {
-              varList_yz[var_count] = adios2_define_variable(Run.ioH, adios2_var_name, adios2_type_double,3, gdim,
+              varList_yz[0] = adios2_define_variable(Run.ioH, adios2_var_name, adios2_type_double,3, gdim,
                            start, count, adios2_constant_dims_true);
             }
             else{
-              cout<<Run.rank<<" define yz slice name "<<adios2_var_name<<endl;
-              varList_yz[var_count] = adios2_define_variable(Run.ioH, adios2_var_name, adios2_type_float,3, gdim,
+              cout<<Run.rank<<" define yz slice name "<<adios2_var_name<<" "<<var_count<<endl;
+              varList_yz[0] = adios2_define_variable(Run.ioH, adios2_var_name, adios2_type_float,3, gdim,
                            start, count, adios2_constant_dims_true);
             }
-            var_count++;
           }
         }
+      if(Physics.slice[i_sl_collect] == 0) {
         if (Run.enable_adios2 && (Run.globiter > Run.begin_iter) && Run.globiter >0){
           //cout<<" xy_slice put "<<Run.rank<<" "<<xy_rank<<endl;
           //if (Run.enable_adios2_double)
           //  adios2_put(Run.engineH,varList1[adios2_ind],&iobuf_double[0],adios2_mode_sync);
           //else
-            cout<<Run.rank<<" put yz slice name "<<adios2_ind<<endl;
-            adios2_put(Run.engineH,varList_yz[nsl],&iobuf_list[nsl][0],adios2_mode_deferred);
-          adios2_ind++;
+            sprintf(adios2_var_name,"%s_%04d.%06d","yz_slice",
+                  ixpos[nsl],curr);
+            varList_yz[0]=adios2_inquire_variable(Run.ioH, adios2_var_name);
+            cout<<Run.rank<<" put yz slice name "<<adios2_var_name<<endl;
+            adios2_put(Run.engineH,varList_yz[0],&iobuf_list[nsl][0],adios2_mode_deferred);
         }
         
         if(!Run.globiter || !Run.enable_adios2 ||(Run.maxiter-Run.globiter)<std::min(Run.resfreq,Run.slicefreq)){

@@ -15,7 +15,7 @@ git checkout 08e6bc524ae019a83be03bed2ad2f9de5bc3bff1
 module load conda
 conda-env create -f mpich_sperr_de.yml
 conda activate mpich_sperr_de
-pip install /glade/work/haiyingx/numcodecs_sperr/dist/numcodecs-0.0.0-cp39-cp39-linux_x86_64.whl --force-reinstall
+pip install /glade/work/haiyingx/numcodecs_sperr/dist/numcodecs-0.0.0-cp39-cp39-linux_x86_64.whl --force-reinstall --no-deps
 export CFLAGS="-noswitcherror $CFLAG"
 which mpicc
 env MPICC=/glade/u/apps/derecho/23.06/spack/opt/spack/ncarcompilers/1.0.0/gcc/12.2.0/gj6c/bin/mpi/mpicc pip3 install mpi4py --no-cache-dir

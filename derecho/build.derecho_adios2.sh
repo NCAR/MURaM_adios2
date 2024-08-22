@@ -10,8 +10,8 @@
 #PBS -o build.out 
 
 module purge
-module load ncarenv
-module load nvhpc
+module load ncarenv/23.06
+module load nvhpc/23.1
 module load cuda
 module load craype
 module load cray-mpich

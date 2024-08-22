@@ -1,6 +1,7 @@
 from dask_mpi import initialize
 import dask.array as da
 from distributed import Client, wait
+import json
 from operator import floordiv
 from mpi4py import MPI
 import numpy as np
@@ -8,8 +9,13 @@ import adios2
 import zarr
 from parse_parameters import parsed_param_dict,parsed_backup_dict,get_output_varname,format_level
 
+
+with open('slice_ranks.txt', 'r') as srjson:
+    rank_info = json.load(srjson)
+print(rank_info)
 begin_iter='000000'
 #begin_globiter=60000
+need_zip=0
 begin_globiter=int(parsed_backup_dict(""))
 param_dict=parsed_param_dict("")
 multifile = 1
@@ -104,7 +110,7 @@ print("rank",rank, "xy",xy_rank,"xz",xz_rank,"yz",yz_rank,"xcol",xcol_rank,"ycol
 
 # Zarr file compressor definition 
 zarr_compression_type, zarr_compression_level = 'gzip', 4
-#zarr_compression_kw = dict(compressor=zarr.Sperr(mode=2,level=130))
+zarr_compression_kw = dict(compressor=zarr.Sperr(mode=2,level=130))
 zarr_compression_kw = dict(compressor=zarr.GZip(level=4))
 dtype ='f4'
 if enable_double:
@@ -118,6 +124,9 @@ world_group=comm.Get_group()
 
 # Construct a group containing all of the worker ranks in world_group
 #worker_group=world_group.Excl([0,1])
+worker_group=world_group.Dup()
+
+# Create a new communicator based on the group
 worker_group=world_group.Dup()
 
 # Create a new communicator based on the group
@@ -185,11 +194,23 @@ for i in range(nsteps):
         store = zarr.DirectoryStore(f'3D/result_prim.{ni}.lossless.single.122.zarr')
         store_I = zarr.DirectoryStore(f'2D/I_out.{ni}.lossless.single.122.zarr')
         store_xy = zarr.DirectoryStore(f'2D/xy_slice.{ni}.lossless.single.122.zarr')
+        
         if yz_slice:
             store_yz = zarr.DirectoryStore(f'2D/yz_slice.{ni}.lossless.single.122.zarr')
         store_tau = zarr.DirectoryStore(f'2D/tau_slice.{ni}.lossless.single.122.zarr')
         if dem:
             store_corona = zarr.DirectoryStore(f'2D/corona_emission.{ni}.lossless.single.122.zarr')
+        
+        if need_zip:
+            store = zarr.ZipStore(f'3D/result_prim.{ni}.lossless.single.122.zip', mode='w')
+            store_I = zarr.ZipStore(f'2D/I_out.{ni}.lossless.single.122.zip', mode='w')
+            store_xy = zarr.ZipStore(f'2D/xy_slice.{ni}.lossless.single.122.zip', mode='w')
+            if yz_slice:
+                store_yz = zarr.ZipStore(f'2D/yz_slice.{ni}.lossless.single.122.zip', mode='w')
+            store_tau = zarr.ZipStore(f'2D/tau_slice.{ni}.lossless.single.122.zip', mode='w')
+            if dem:
+                store_corona = zarr.ZipStore(f'2D/corona_emission.{ni}.lossless.single.122.zip', mode='w')
+                
         if rank == 0:
             prim = zarr.group(store=store, overwrite=True)
             prim_I = zarr.group(store=store_I, overwrite=True)
@@ -455,13 +476,6 @@ for i in range(nsteps):
             inVar12.append(np.zeros(count4,dtype=dtype,order='F'))
     bpFileReader.BeginStep()
     if xcol_rank ==0:
-        #var_info = bpIO.AvailableVariables()
-        #for name, info in var_info.items():
-        #    if rank == 2:
-        #        print("attribute_name: " + name)
-        #        for key, value in info.items():
-        #            print("\t" + key + ": " + value)
-        #        print("\n")
         var_get12=[]
         var_time2d_get = bpIO.InquireVariable("Run.time.2d")
         for c,li in enumerate(tau_lev):
@@ -500,57 +514,49 @@ for i in range(nsteps):
  
     #yz_slice IO
     if yz_slice:
-        inVar_yz=[] 
-        print("yz_slice IO done ",format_yz_lev[0])
         bpFileReader.BeginStep()
-        #if rank<64 and rank>47:
-        for name, info in var_info.items():
-            if rank == 2:
-                print("attribute_name: " + name)
-                for key, value in info.items():
-                    print("\t" + key + ": " + value)
-                print("\n")
-        var_get_yz=[]
+        var_get_yz={}
         for vi in format_yz_lev:
-            var_get_yz.append(bpIO.InquireVariable(f"yz_slice_{vi}.{begin_iter}"))
-        if var_get_yz[0] is None:
-            print(comm.rank,"var_get15 inquire is not working")
-        for c,vi in enumerate(format_yz_lev):
-            var_get_yz[c].SetSelection([start_yz,count_yz])
-            inVar_yz.append(np.zeros(count_yz,dtype=dtype,order='C'))
-        for c,vi in enumerate(format_yz_lev):
-            bpFileReader.Get(var_get_yz[c], inVar_yz[c], adios2.Mode.Sync)
+            #if str(rank) in yz_rank_info[f'yz_slice_{vi}'] and rank<=yz_rank_info[vi][1]:
+            if str(rank) in rank_info[f'yz_slice_{vi}']:
+                var_name=f"yz_slice_{vi}.{begin_iter}"
+                print('var_name ',var_name, vi)
+                var_get_yz[var_name]=bpIO.InquireVariable(var_name)
+        inVar_yz={}
+        for c,vi in var_get_yz.items():
+            print('var_get_yz ',c,type(vi))
+            vi.SetSelection([start_yz,count_yz])
+            inVar_yz[c]=np.zeros(count_yz,dtype=dtype,order='C')
+        for c,vi in var_get_yz.items():
+            bpFileReader.Get(vi, inVar_yz[c], adios2.Mode.Deferred)
+            print('inVar_yz ',c,type(inVar_yz[c]))
         bpFileReader.EndStep()
-        #if rank<64 or rank>47:
+
         print("yz_slice IO done")
+        for c,vi in inVar_yz.items():
+            print(rank,'write inVar_yz ',c,inVar_yz[c][0,0,0])
         if multifile:
-            for c,vi in enumerate(format_yz_lev):
-                prim2_yz[f"yz_slice_{vi}"][start_yz[0]:end_yz[0],start_yz[1]:end_yz[1],start_yz[2]:end_yz[2]]=inVar_yz[c]
+            for c,vi in inVar_yz.items():
+                prim2_yz[c[:13]][start_yz[0]:end_yz[0],start_yz[1]:end_yz[1],start_yz[2]:end_yz[2]]=inVar_yz[c]
 
     #xy_slice IO
-    inVar15=[] 
     bpFileReader.BeginStep()
-    for name, info in var_info.items():
-        if rank == 2:
-            print("attribute_name: " + name)
-            for key, value in info.items():
-                print("\t" + key + ": " + value)
-            print("\n")
-    var_get15=[]
+    var_get_xy={}
     for vi in format_xy_lev:
-        var_get15.append(bpIO.InquireVariable(f"xy_slice_{vi}.{begin_iter}"))
-    if var_get15[0] is None:
-        print(comm.rank,"var_get15 inquire is not working")
-    for c,vi in enumerate(format_xy_lev):
-        var_get15[c].SetSelection([start3,count3])
-        inVar15.append(np.zeros(count3,dtype=dtype,order='C'))
-    for c,vi in enumerate(format_xy_lev):
-        bpFileReader.Get(var_get15[c], inVar15[c], adios2.Mode.Sync)
+        if str(rank) in rank_info[f'xy_slice_{vi}']:
+            var_name=f"xy_slice_{vi}.{begin_iter}"
+            var_get_xy[var_name]=bpIO.InquireVariable(var_name)
+    inVar_xy={} 
+    for c,vi in var_get_xy.items():
+        vi.SetSelection([start3,count3])
+        inVar_xy[c]=np.zeros(count3,dtype=dtype,order='C')
+    for c,vi in var_get_xy.items():
+        bpFileReader.Get(vi, inVar_xy[c], adios2.Mode.Sync)
     bpFileReader.EndStep()
     print("xy_slice IO done")
     if multifile:
-        for c,vi in enumerate(format_xy_lev):
-            prim2_xy[f"xy_slice_{vi}"][start3[0]:end3[0],start3[1]:end3[1],start3[2]:end3[2]]=inVar15[c]
+        for c,vi in inVar_xy.items():
+            prim2_xy[c[:13]][start3[0]:end3[0],start3[1]:end3[1],start3[2]:end3[2]]=inVar_xy[c]
         #if worker_comm.rank ==0 :
         #    prim2_xy.attrs['run_time_2d']=inVarTime2d[0]
     #else:
@@ -562,19 +568,9 @@ for i in range(nsteps):
     #if bpFileReader.BeginStep()==adios2.StepStatus.OK:
     if dem:
         bpFileReader.BeginStep()
-        #var_info = bpIO.AvailableVariables()
-        #for name, info in var_info.items():
-        #    if comm.rank == 2:
-        #        print("attribute_name: " + name)
-        #        for key, value in info.items():
-        #            print("\t" + key + ": " + value)
-        #        print("\n")
         if ycol_rank == 0:
             #print('corona ycol_rank = 0, rank=',comm.rank)
-            print(rank," before inquire coro 22")
             var_get21=bpIO.InquireVariable("corona_emission_adj_fil_y.000000")
-            #if var_get17 is None:
-            #    print(comm.rank,"var_get17 inquire is not working")
             var_get22=bpIO.InquireVariable("corona_emission_adj_dem_y.000000")
             var_get23=bpIO.InquireVariable("corona_emission_adj_vlos_y.000000")
             var_get24=bpIO.InquireVariable("corona_emission_adj_vrms_y.000000")
@@ -604,14 +600,6 @@ for i in range(nsteps):
         bpFileReader.BeginStep()
         if xcol_rank == 0:
             print('corona xcol_rank = 0, rank=',comm.rank)
-            #var_info = bpIO.AvailableVariables()
-            #for name, info in var_info.items():
-            #    if comm.rank == 2:
-            #        print("attribute_name: " + name)
-            #        for key, value in info.items():
-            #            print("\t" + key + ": " + value)
-            #        print("\n")
-            print("before inquire coro 17")
             var_get17=bpIO.InquireVariable("corona_emission_adj_fil_x.000000")
             var_get18=bpIO.InquireVariable("corona_emission_adj_dem_x.000000")
             var_get19=bpIO.InquireVariable("corona_emission_adj_vlos_x.000000")
@@ -642,14 +630,6 @@ for i in range(nsteps):
         bpFileReader.EndStep()
         bpFileReader.BeginStep()
         if zcol_rank == 0:
-            #print('corona zcol_rank = 0, rank=',comm.rank)
-            #var_info = bpIO.AvailableVariables()
-            #for name, info in var_info.items():
-            #    if comm.rank == 2:
-            #        print("attribute_name: " + name)
-            #        for key, value in info.items():
-            #            print("\t" + key + ": " + value)
-            #        print("\n")
             print("before inquire coro 25")
             var_get25=bpIO.InquireVariable("corona_emission_adj_fil_z.000000")
             var_get26=bpIO.InquireVariable("corona_emission_adj_dem_z.000000")
@@ -670,24 +650,14 @@ for i in range(nsteps):
             bpFileReader.Get(var_get27, inVar27,adios2.Mode.Sync)
             bpFileReader.Get(var_get28, inVar28,adios2.Mode.Sync)
         bpFileReader.EndStep()
-        if ycol_rank == 0:
-            if multifile:
-                prim2_corona.corona_y1[start2[0][0]:end2[0][0],start2[0][1]:end2[0][1],start2[0][2]:end2[0][2]]=inVar21
-                prim2_corona.corona_y2[start2[0][0]:end2[0][0],start2[0][1]:end2[0][1],start2[0][2]:end2[0][2]]=inVar22
-                prim2_corona.corona_y3[start2[0][0]:end2[0][0],start2[0][1]:end2[0][1],start2[0][2]:end2[0][2]]=inVar23
-                prim2_corona.corona_y4[start2[0][0]:end2[0][0],start2[0][1]:end2[0][1],start2[0][2]:end2[0][2]]=inVar24
-        if xcol_rank == 0:
-            if multifile:
-                prim2_corona.corona_x1[start2[1][0]:end2[1][0],start2[1][1]:end2[1][1],start2[1][2]:end2[1][2]]=inVar17
-                prim2_corona.corona_x2[start2[1][0]:end2[1][0],start2[1][1]:end2[1][1],start2[1][2]:end2[1][2]]=inVar18
-                prim2_corona.corona_x3[start2[1][0]:end2[1][0],start2[1][1]:end2[1][1],start2[1][2]:end2[1][2]]=inVar19
-                prim2_corona.corona_x4[start2[1][0]:end2[1][0],start2[1][1]:end2[1][1],start2[1][2]:end2[1][2]]=inVar20
+        '''
         if zcol_rank == 0:
             if multifile:
                 prim2_corona.corona_z1[start2[2][0]:end2[2][0],start2[2][1]:end2[2][1],start2[2][2]:end2[2][2]]=inVar25
                 prim2_corona.corona_z2[start2[2][0]:end2[2][0],start2[2][1]:end2[2][1],start2[2][2]:end2[2][2]]=inVar26
                 prim2_corona.corona_z3[start2[2][0]:end2[2][0],start2[2][1]:end2[2][1],start2[2][2]:end2[2][2]]=inVar27
                 prim2_corona.corona_z4[start2[2][0]:end2[2][0],start2[2][1]:end2[2][1],start2[2][2]:end2[2][2]]=inVar28
+        '''
 
     worker_comm.Barrier()
     if multifile:
@@ -707,6 +677,15 @@ for i in range(nsteps):
     for vi,vn in enumerate(diag_output):
         prim2[vn][start[0]:end[0],start[1]:end[1],start[2]:end[2]]=diagVar[vi]
     print('Total 3D write time:',comm.rank,MPI.Wtime()-start_time)
+
+    if need_zip:
+        store.close()
+        store_I.close()
+        store_xy.close()
+        store_yz.close()
+        store_tau.close()
+        store_corona.close()
+        
 
 bpFileReader.Close()
 

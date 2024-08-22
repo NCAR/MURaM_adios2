@@ -22,6 +22,7 @@ OBJS = ACCH.o \
        driver.o \
        grid.o \
        init.o \
+       get_slice_ranks.o \
        run.o \
        physics.o \
        analysis_light.o \
