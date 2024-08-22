@@ -92,5 +92,8 @@ backup=parsed_backup_dict("")
 #print(par['tau_lev'])
 #get_output_varname(par['eos_var'],par['eos_output'])
 #get_output_varname(par['diag_var'],par['diag_output'])
-lev=format_level(par['yz_lev'])
-print(lev)
+format_yz_lev=[]
+yz_lev=par['yz_lev']
+for i in yz_lev:
+    format_yz_lev.append( "{:04d}".format(i))
+print(format_yz_lev)
